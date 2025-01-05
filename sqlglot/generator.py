@@ -961,11 +961,12 @@ class Generator(metaclass=_Generator):
         constraints = f" {constraints}" if constraints else ""
         position = self.sql(expression, "position")
         position = f" {position}" if position else ""
+        ordinality = " FOR ORDINALITY" if expression.args.get("ordinality") else ""
 
         if expression.find(exp.ComputedColumnConstraint) and not self.COMPUTED_COLUMN_WITH_TYPE:
             kind = ""
 
-        return f"{exists}{column}{kind}{constraints}{position}"
+        return f"{exists}{column}{ordinality}{kind}{constraints}{position}"
 
     def columnconstraint_sql(self, expression: exp.ColumnConstraint) -> str:
         this = self.sql(expression, "this")

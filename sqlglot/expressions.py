@@ -1672,6 +1672,7 @@ class ColumnDef(Expression):
         "constraints": False,
         "exists": False,
         "position": False,
+        "ordinality": False,
     }
 
     @property

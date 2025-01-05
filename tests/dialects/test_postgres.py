@@ -1313,7 +1313,7 @@ CROSS JOIN JSON_ARRAY_ELEMENTS(CAST(JSON_EXTRACT_PATH(tbox, 'boxes') AS JSON)) A
     def test_xmltable(self):
         # Test XMLTABLE without namespaces
         self.validate_identity(
-            "SELECT id, name FROM XMLTABLE('/root/user' PASSING xml_data COLUMNS id INT PATH '@id', name TEXT PATH 'name/text()') AS t"
+            "SELECT id, name FROM XMLTABLE('/root/user' PASSING xml_data COLUMNS id FOR ORDINALITY, name TEXT PATH 'name/text()') AS t"
         )
         # Basic XMLTABLE with single namespace
         self.validate_identity(
