@@ -6695,7 +6695,21 @@ class XMLElement(Func):
 
 
 class XMLTable(Func):
-    arg_types = {"this": True, "passing": False, "columns": False, "by_ref": False}
+    arg_types = {
+        "this": True,
+        "namespaces": False,
+        "passing": False,
+        "columns": False,
+        "by_ref": False,
+    }
+
+
+class XMLNamespaces(Func):
+    arg_types = {"expressions": True}
+
+
+class XMLNamespace(Expression):
+    arg_types = {"this": True, "alias": False}
 
 
 class Year(Func):

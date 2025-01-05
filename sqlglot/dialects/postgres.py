@@ -397,6 +397,7 @@ class Postgres(Dialect):
             "DATE_PART": lambda self: self._parse_date_part(),
             "JSONB_EXISTS": lambda self: self._parse_jsonb_exists(),
             "XMLTABLE": lambda self: self._parse_xml_table(),
+            "XMLNAMESPACES": lambda self: self._parse_xml_namespace(),
         }
 
         BITWISE = {
@@ -493,10 +494,15 @@ class Postgres(Dialect):
             return this
 
         def _parse_xml_table(self) -> exp.XMLTable:
-            this = self._parse_string()
-
+            namespaces = None
             passing = None
             columns = None
+
+            if self._curr and self._curr.text.upper() == "XMLNAMESPACES":
+                namespaces = self._parse_function_call()
+                self._match(TokenType.COMMA)
+
+            this = self._parse_string()
 
             if self._match_text_seq("PASSING"):
                 # The BY VALUE keywords are optional and are provided for semantic clarity
@@ -506,7 +512,23 @@ class Postgres(Dialect):
             if self._match_text_seq("COLUMNS"):
                 columns = self._parse_csv(self._parse_field_def)
 
-            return self.expression(exp.XMLTable, this=this, passing=passing, columns=columns)
+            return self.expression(
+                exp.XMLTable, this=this, namespaces=namespaces, passing=passing, columns=columns
+            )
+
+        def _parse_xml_namespace(self) -> exp.XMLNamespaces:
+            namespaces = []
+
+            while True:
+                uri = self._parse_string()
+                self._match_text_seq("AS")
+                alias = self._parse_id_var(any_token=True)
+                namespaces.append(exp.XMLNamespace(this=uri, alias=alias))
+
+                if not self._match(TokenType.COMMA):
+                    break
+
+            return self.expression(exp.XMLNamespaces, expressions=namespaces)
 
     class Generator(generator.Generator):
         SINGLE_STRING_INTERVAL = True
@@ -735,10 +757,19 @@ class Postgres(Dialect):
         def computedcolumnconstraint_sql(self, expression: exp.ComputedColumnConstraint) -> str:
             return f"GENERATED ALWAYS AS ({self.sql(expression, 'this')}) STORED"
 
+        def xmlnamespace_sql(self, expression: exp.XMLNamespace) -> str:
+            return f"{self.sql(expression, 'this')} AS {self.sql(expression, 'alias')}"
+
+        def xmlnamespaces_sql(self, expression: exp.XMLNamespaces) -> str:
+            exprs = self.expressions(expression, flat=True)
+            return f"XMLNAMESPACES({exprs})"
+
         def xmltable_sql(self, expression: exp.XMLTable) -> str:
             this = self.sql(expression, "this")
+            namespaces = self.sql(expression, key="namespaces")
+            namespaces = f"{namespaces}, " if namespaces else ""
             passing = self.expressions(expression, key="passing")
             passing = f"{self.sep()}PASSING{self.seg(passing)}" if passing else ""
             columns = self.expressions(expression, key="columns")
             columns = f"{self.sep()}COLUMNS{self.seg(columns)}" if columns else ""
-            return f"XMLTABLE({self.sep('')}{self.indent(this + passing + columns)}{self.seg(')', sep='')}"
+            return f"XMLTABLE({self.sep('')}{self.indent(namespaces + this + passing + columns)}{self.seg(')', sep='')}"

@@ -1311,7 +1311,15 @@ CROSS JOIN JSON_ARRAY_ELEMENTS(CAST(JSON_EXTRACT_PATH(tbox, 'boxes') AS JSON)) A
         )
 
     def test_xmltable(self):
-        # Test XMLTABLE without XMLNAMESPACES
+        # Test XMLTABLE without namespaces
         self.validate_identity(
             "SELECT id, name FROM XMLTABLE('/root/user' PASSING xml_data COLUMNS id INT PATH '@id', name TEXT PATH 'name/text()') AS t"
+        )
+        # Basic XMLTABLE with single namespace
+        self.validate_identity(
+            "SELECT element_id, is_active, updated_at, description, reference_id FROM XMLTABLE(XMLNAMESPACES('http://example.com/xsd/sample/v1' AS \"ex\"), '/root/item/*[local-name()=\"exampleElement\"]' PASSING xml_content COLUMNS element_id VARCHAR(128) PATH '@id', is_active BOOLEAN PATH '@ex:isActive', updated_at TIMESTAMP PATH '@ex:updatedAt', description VARCHAR(4000) PATH 'ex:description/text()', reference_id UUID PATH 'ex:reference/@ref') AS x"
+        )
+        # Test with multiple namespaces
+        self.validate_identity(
+            "SELECT id, value FROM XMLTABLE(XMLNAMESPACES('http://example.com/ns1' AS \"ns1\", 'http://example.com/ns2' AS \"ns2\"), '/root/data' PASSING xml_content COLUMNS id INT PATH '@ns1:id', value TEXT PATH 'ns2:value/text()') AS t"
         )
